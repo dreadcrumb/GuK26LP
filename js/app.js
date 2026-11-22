@@ -869,16 +869,16 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
           const key = s.id + i; if (!TXT[key]) TXT[key] = strip(c.html); const t = TXT[key];
           const titleMatch = matchText(c.t, q), textMatch = matchText(t, q);
           if (titleMatch || textMatch) {
-            const best = titleMatch && titleMatch.exact ? [titleMatch, 3] : textMatch && textMatch.exact ? [textMatch, 2] : titleMatch ? [titleMatch, 3] : [textMatch, 2];
+            const best = titleMatch && titleMatch.exact ? { match: titleMatch, priority: 3 } : textMatch && textMatch.exact ? { match: textMatch, priority: 2 } : titleMatch ? { match: titleMatch, priority: 3 } : { match: textMatch, priority: 2 };
             const p = textMatch ? textMatch.ranges[0].start : -1;
-            const start = Math.max(0, p - 70), excerpt = p >= 0 ? t.slice(start, p + 110) : '';
-            hits.push({ w: (best[0].exact ? 10000 : 0) + best[1] * 100 - best[0].distance * 10, html: `<a class="hit" href="#f-${s.id}-lern-${i}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Lernteil Kapitel ${i + 1}</span><br><b style="font-size:18px">${mark(c.t, titleMatch)}</b>${p >= 0 ? `<br><span class="small" style="font-size:14px">… ${mark(excerpt, matchText(excerpt, q))} …</span>` : ''}</a>` });
+            const start = Math.max(0, p - 70), end = p + 110, excerpt = p >= 0 ? t.slice(start, end) : '';
+            hits.push({ w: matchRank(best.match, best.priority), html: `<a class="hit" href="#f-${s.id}-lern-${i}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Lernteil Kapitel ${i + 1}</span><br><b style="font-size:18px">${mark(c.t, titleMatch)}</b>${p >= 0 ? `<br><span class="small" style="font-size:14px">… ${mark(excerpt, sliceMatch(textMatch, start, end))} …</span>` : ''}</a>` });
           }
         });
         d.qs.forEach((x, i) => {
           if (x.hide) return;
           const questionMatch = matchText(x.q, q);
-          if (questionMatch) hits.push({ w: (questionMatch.exact ? 10000 : 0) + 100 - questionMatch.distance * 10, html: `<a class="hit" href="#f-${s.id}-lern-${x.sec >= 0 ? x.sec : 0}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Quizfrage</span><br><b>${mark(x.q, questionMatch)}</b><br><span class="small" style="font-size:14px">Antwort: ${x.y ? strip(answerText(x)).slice(0, 160) : x.o.length ? E(x.o.filter(o => o[1]).map(o => o[0]).join(' · ')) : E(strip(x.a || '').slice(0, 160))}</span></a>` });
+          if (questionMatch) hits.push({ w: matchRank(questionMatch, 1), html: `<a class="hit" href="#f-${s.id}-lern-${x.sec >= 0 ? x.sec : 0}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Quizfrage</span><br><b>${mark(x.q, questionMatch)}</b><br><span class="small" style="font-size:14px">Antwort: ${x.y ? strip(answerText(x)).slice(0, 160) : x.o.length ? E(x.o.filter(o => o[1]).map(o => o[0]).join(' · ')) : E(strip(x.a || '').slice(0, 160))}</span></a>` });
         });
       }
     }
@@ -886,6 +886,7 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
     const shown = hits.slice(0, 60);
     shell('start', null, `<section class="card"><span class="lbl muted">Suche</span><h1 class="h2" style="margin:4px 0 0">${q.length < 2 ? 'Gib mindestens 2 Buchstaben ein.' : `${hits.length} Treffer für „${E(q)}“`}</h1>${hits.length > 60 ? '<p class="small" style="margin:6px 0 0">Die ersten 60 werden angezeigt.</p>' : ''}</section><div style="display:flex;flex-direction:column;gap:10px">${shown.map(h => h.html).join('')}</div>`);
   }
+  function matchRank(match, priority) { return (match.exact ? 10000 : 0) + priority * 100 - match.distance * 10; }
   function matchText(text, query) {
     const t = String(text), q = String(query), i = t.toLowerCase().indexOf(q.toLowerCase());
     if (i >= 0) return { exact: true, distance: 0, ranges: [{ start: i, end: i + q.length }] };
@@ -909,21 +910,27 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   }
   function editDistance(a, b, limit) {
     if (Math.abs(a.length - b.length) > limit) return limit + 1;
-    const d = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-    for (let i = 0; i <= a.length; i++) d[i][0] = i;
-    for (let j = 0; j <= b.length; j++) d[0][j] = j;
+    let previousPrevious = null;
+    let previous = Array.from({ length: b.length + 1 }, (_, j) => j);
     for (let i = 1; i <= a.length; i++) {
+      const current = new Array(b.length + 1); current[0] = i;
       for (let j = 1; j <= b.length; j++) {
-        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
-        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+        current[j] = Math.min(previous[j] + 1, current[j - 1] + 1, previous[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) current[j] = Math.min(current[j], previousPrevious[j - 2] + 1);
       }
+      previousPrevious = previous; previous = current;
     }
-    return d[a.length][b.length] <= limit ? d[a.length][b.length] : limit + 1;
+    return previous[b.length] <= limit ? previous[b.length] : limit + 1;
+  }
+  function sliceMatch(match, start, end) {
+    if (!match) return null;
+    const ranges = match.ranges.filter(r => r.start >= start && r.end <= end).map(r => ({ start: r.start - start, end: r.end - start }));
+    return ranges.length ? { ...match, ranges } : null;
   }
   function mark(text, match) {
     const t = String(text); if (!match) return E(t);
     let out = '', last = 0;
-    match.ranges.sort((a, b) => a.start - b.start).forEach(r => {
+    [...match.ranges].sort((a, b) => a.start - b.start).forEach(r => {
       if (r.start < last) return;
       out += E(t.slice(last, r.start)) + '<mark>' + E(t.slice(r.start, r.end)) + '</mark>';
       last = r.end;
