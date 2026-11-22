@@ -860,23 +860,76 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   function strip(h) { const t = document.createElement('div'); t.innerHTML = h; return t.textContent.replace(/\s+/g, ' '); }
   const TXT = {};
   function viewSuche() {
-    const q = searchQ.trim(); const ql = q.toLowerCase();
+    const q = searchQ.trim();
     let hits = [];
     if (q.length >= 2) {
       for (const s of SUBJ) {
         const d = data(s.id);
         d.secs.forEach((c, i) => {
-          const key = s.id + i; if (!TXT[key]) TXT[key] = strip(c.html); const t = TXT[key]; const p = t.toLowerCase().indexOf(ql); const inT = c.t.toLowerCase().includes(ql);
-          if (inT || p >= 0) hits.push({ w: inT ? 3 : 2, html: `<a class="hit" href="#f-${s.id}-lern-${i}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Lernteil Kapitel ${i + 1}</span><br><b style="font-size:18px">${mark(c.t, q)}</b>${p >= 0 ? `<br><span class="small" style="font-size:14px">… ${mark(t.slice(Math.max(0, p - 70), p + 110), q)} …</span>` : ''}</a>` });
+          const key = s.id + i; if (!TXT[key]) TXT[key] = strip(c.html); const t = TXT[key];
+          const titleMatch = matchText(c.t, q), textMatch = matchText(t, q);
+          if (titleMatch || textMatch) {
+            const best = titleMatch && titleMatch.exact ? [titleMatch, 3] : textMatch && textMatch.exact ? [textMatch, 2] : titleMatch ? [titleMatch, 3] : [textMatch, 2];
+            const p = textMatch ? textMatch.ranges[0].start : -1;
+            const start = Math.max(0, p - 70), excerpt = p >= 0 ? t.slice(start, p + 110) : '';
+            hits.push({ w: (best[0].exact ? 10000 : 0) + best[1] * 100 - best[0].distance * 10, html: `<a class="hit" href="#f-${s.id}-lern-${i}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Lernteil Kapitel ${i + 1}</span><br><b style="font-size:18px">${mark(c.t, titleMatch)}</b>${p >= 0 ? `<br><span class="small" style="font-size:14px">… ${mark(excerpt, matchText(excerpt, q))} …</span>` : ''}</a>` });
+          }
         });
-        d.qs.forEach((x, i) => { if (!x.hide && x.q.toLowerCase().includes(ql)) hits.push({ w: 1, html: `<a class="hit" href="#f-${s.id}-lern-${x.sec >= 0 ? x.sec : 0}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Quizfrage</span><br><b>${mark(x.q, q)}</b><br><span class="small" style="font-size:14px">Antwort: ${x.y ? strip(answerText(x)).slice(0, 160) : x.o.length ? E(x.o.filter(o => o[1]).map(o => o[0]).join(' · ')) : E(strip(x.a || '').slice(0, 160))}</span></a>` }); });
+        d.qs.forEach((x, i) => {
+          if (x.hide) return;
+          const questionMatch = matchText(x.q, q);
+          if (questionMatch) hits.push({ w: (questionMatch.exact ? 10000 : 0) + 100 - questionMatch.distance * 10, html: `<a class="hit" href="#f-${s.id}-lern-${x.sec >= 0 ? x.sec : 0}"><span class="lbl" style="color:${s.ink}">${E(s.name)} · Quizfrage</span><br><b>${mark(x.q, questionMatch)}</b><br><span class="small" style="font-size:14px">Antwort: ${x.y ? strip(answerText(x)).slice(0, 160) : x.o.length ? E(x.o.filter(o => o[1]).map(o => o[0]).join(' · ')) : E(strip(x.a || '').slice(0, 160))}</span></a>` });
+        });
       }
     }
     hits.sort((a, b) => b.w - a.w);
     const shown = hits.slice(0, 60);
     shell('start', null, `<section class="card"><span class="lbl muted">Suche</span><h1 class="h2" style="margin:4px 0 0">${q.length < 2 ? 'Gib mindestens 2 Buchstaben ein.' : `${hits.length} Treffer für „${E(q)}“`}</h1>${hits.length > 60 ? '<p class="small" style="margin:6px 0 0">Die ersten 60 werden angezeigt.</p>' : ''}</section><div style="display:flex;flex-direction:column;gap:10px">${shown.map(h => h.html).join('')}</div>`);
   }
-  function mark(text, q) { const t = String(text); const i = t.toLowerCase().indexOf(q.toLowerCase()); if (i < 0) return E(t); return E(t.slice(0, i)) + '<mark>' + E(t.slice(i, i + q.length)) + '</mark>' + E(t.slice(i + q.length)); }
+  function matchText(text, query) {
+    const t = String(text), q = String(query), i = t.toLowerCase().indexOf(q.toLowerCase());
+    if (i >= 0) return { exact: true, distance: 0, ranges: [{ start: i, end: i + q.length }] };
+    const terms = [...q.matchAll(/[\p{L}\p{N}]+/gu)].map(x => x[0].toLowerCase());
+    const words = [...t.matchAll(/[\p{L}\p{N}]+/gu)];
+    if (!terms.length || !words.length) return null;
+    const used = new Set(), ranges = []; let distance = 0;
+    for (const term of terms) {
+      const max = term.length >= 6 ? 2 : term.length >= 3 ? 1 : 0;
+      let best = null;
+      words.forEach((word, j) => {
+        if (used.has(j) || Math.abs(word[0].length - term.length) > max) return;
+        const dist = editDistance(term, word[0].toLowerCase(), max);
+        if (dist <= max && (!best || dist < best.distance)) best = { j, distance: dist };
+      });
+      if (!best) return null;
+      used.add(best.j); distance += best.distance;
+      ranges.push({ start: words[best.j].index, end: words[best.j].index + words[best.j][0].length });
+    }
+    return { exact: false, distance, ranges };
+  }
+  function editDistance(a, b, limit) {
+    if (Math.abs(a.length - b.length) > limit) return limit + 1;
+    const d = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
+    for (let i = 0; i <= a.length; i++) d[i][0] = i;
+    for (let j = 0; j <= b.length; j++) d[0][j] = j;
+    for (let i = 1; i <= a.length; i++) {
+      for (let j = 1; j <= b.length; j++) {
+        d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+        if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
+    }
+    return d[a.length][b.length] <= limit ? d[a.length][b.length] : limit + 1;
+  }
+  function mark(text, match) {
+    const t = String(text); if (!match) return E(t);
+    let out = '', last = 0;
+    match.ranges.sort((a, b) => a.start - b.start).forEach(r => {
+      if (r.start < last) return;
+      out += E(t.slice(last, r.start)) + '<mark>' + E(t.slice(r.start, r.end)) + '</mark>';
+      last = r.end;
+    });
+    return out + E(t.slice(last));
+  }
 
   /* ---------- router ---------- */
 
