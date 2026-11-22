@@ -948,7 +948,8 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   <button class="btn" type="button" data-act="lzstart" data-id="${id}" style="align-self:flex-start;margin-top:6px">Lernziel-Quiz starten${svg('arrow', '#FFFFFF', 18)}</button></section>
   <section class="card"><h2 class="h2" style="font-size:22px;margin-bottom:4px">Alle Lernziele</h2><p class="small" style="margin:0">Fortschritt = richtig beantwortete Auswahlfragen je Lernziel. „Üben“ fragt nur dieses Lernziel ab.</p>${list}</section></div>`);
   }
-  function route() {
+  function route(preserveScroll) {
+    const scrollY = preserveScroll ? window.scrollY : 0;
     const h = decodeURIComponent(location.hash.slice(1));
     document.body.classList.toggle('spielmode', h === 'spiel'); if (h !== 'spiel') document.body.classList.remove('spielforce');
     let m;
@@ -975,7 +976,7 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
         else viewZuordnen(id, k);
       } else viewHome();
     } catch (err) { console.error(err); $app.innerHTML = '<p style="padding:24px">Da ist etwas schiefgegangen: ' + E(err.message) + '</p>'; }
-    window.scrollTo(0, 0);
+    window.scrollTo(0, scrollY);
   }
   function go(h) { if (location.hash === '#' + h) route(); else location.hash = h; }
   window.addEventListener('hashchange', () => { if (GATE.open) route(); });
@@ -1648,7 +1649,7 @@ Antworte NUR mit JSON in genau dieser Form:
       let needsUpload = false;
       if (snap.exists && snap.data().st) {
         const remote = snap.data(); progApply(remote, sameOwner); PROG.lastTs = remote.ts || 0;
-        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route();
+        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route(true);
         needsUpload = sameOwner && (st._ts || 0) > PROG.lastTs;
       } else {
         if (!sameOwner) {
@@ -1664,7 +1665,7 @@ Antworte NUR mit JSON in genau dieser Form:
         if (!remote.st || (remote.ts || 0) <= PROG.lastTs) return;
         const localTs = st._ts || 0; progApply(remote, true); PROG.lastTs = remote.ts || 0; PROG.error = ''; PROG.state = 'cloud'; progChip();
         if (localTs > PROG.lastTs) progPush();
-        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route();
+        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route(true);
       }, e => { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); });
       PROG.state = 'cloud'; progChip();
       if (needsUpload) progPush();
