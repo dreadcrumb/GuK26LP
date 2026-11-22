@@ -1,7 +1,7 @@
 /* Lädt alle Daten (JSON) und startet danach das Portal (js/app.js).
    V hochzählen, wenn Dateien geändert wurden – so holen Browser die neue Version statt des Caches. */
 (function () {
-  var V = '4';
+  var V = '5';
   var app = document.getElementById('app');
   var get = function (u) {
     return fetch(u + '?v=' + V).then(function (r) {

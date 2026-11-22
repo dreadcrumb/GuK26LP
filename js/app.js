@@ -233,10 +233,12 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
    ${!g.missing && t.secs.length ? `<a class="btn" href="#f-${id}-lern-${t.secs.find(i => !(st.read[id] && st.read[id][i])) ?? t.secs[0]}">${t.rd && t.rd < t.secs.length ? 'Weiterlesen' : 'Thema starten'}${svg('arrow', '#FFFFFF', 18)}</a>` : ''}</div>
    <div class="mrows">${body}</div></section>`);
   }
-  function viewLern(id, k) {
+  function viewLern(id, k, persistLast = true) {
     const s = BYID[id], d = data(id);
     if (!(k >= 0 && k < d.secs.length)) k = 0;
-    st.last = { id, k }; st.lastBy[id] = k; save();
+    if (persistLast && (!st.last || st.last.id !== id || st.last.k !== k || st.lastBy[id] !== k)) {
+      st.last = { id, k }; st.lastBy[id] = k; save();
+    }
     const isRead = !!(st.read[id] && st.read[id][k]);
     const sec = d.secs[k];
     const qn = d.qs.filter(q => inSec(d, q, k) && !q.hide).length;
@@ -948,7 +950,7 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   <button class="btn" type="button" data-act="lzstart" data-id="${id}" style="align-self:flex-start;margin-top:6px">Lernziel-Quiz starten${svg('arrow', '#FFFFFF', 18)}</button></section>
   <section class="card"><h2 class="h2" style="font-size:22px;margin-bottom:4px">Alle Lernziele</h2><p class="small" style="margin:0">Fortschritt = richtig beantwortete Auswahlfragen je Lernziel. „Üben“ fragt nur dieses Lernziel ab.</p>${list}</section></div>`);
   }
-  function route(preserveScroll) {
+  function route(preserveScroll, persistLast = true) {
     const scrollY = preserveScroll ? window.scrollY : 0;
     const h = decodeURIComponent(location.hash.slice(1));
     document.body.classList.toggle('spielmode', h === 'spiel'); if (h !== 'spiel') document.body.classList.remove('spielforce');
@@ -970,7 +972,7 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
       else if (m = h.match(/^f-([a-z0-9]+)-(lern|quiz|karten|zuordnen)(?:-(\d+))?$/)) {
         const id = m[1], mode = m[2], k = m[3] != null ? +m[3] : (mode === 'lern' ? 0 : -1);
         if (!BYID[id]) return viewHome();
-        if (mode === 'lern') viewLern(id, k);
+        if (mode === 'lern') viewLern(id, k, persistLast);
         else if (mode === 'quiz') viewQuizSetup(id, k);
         else if (mode === 'karten') viewKarten(id, k);
         else viewZuordnen(id, k);
@@ -1589,8 +1591,10 @@ Antworte NUR mit JSON in genau dieser Form:
     let c = document.getElementById('nickChip');
     if (!c) { c = document.createElement('button'); c.id = 'nickChip'; c.type = 'button'; c.className = 'btn lt'; c.addEventListener('click', accountDialog); document.body.appendChild(c); }
     const status = PROG.state === 'cloud' ? 'synchronisiert ✓' : PROG.state === 'saving' ? 'speichert …' : PROG.state === 'loading' ? 'lädt …' : PROG.state === 'error' ? 'Sync fehlgeschlagen' : 'nur lokal';
-    c.textContent = (PROG.user ? '👤 ' + PROG.user.email + ' · ' : '☁️ Konto / Synchronisierung · ') + status;
-    c.title = PROG.user ? 'Konto und Lernstand-Synchronisierung verwalten' : 'Mit Konto anmelden, um den Lernstand zu synchronisieren';
+    const label = (PROG.user ? '👤 ' + PROG.user.email + ' · ' : '☁️ Konto / Synchronisierung · ') + status;
+    const title = PROG.user ? 'Konto und Lernstand-Synchronisierung verwalten' : 'Mit Konto anmelden, um den Lernstand zu synchronisieren';
+    if (c.textContent !== label) c.textContent = label;
+    if (c.title !== title) c.title = title;
   }
   function progMerge(a, b) { /* a = neuerer Stand (Basis), b = älterer: Erledigtes aus b bleibt erhalten */
     const m = JSON.parse(JSON.stringify(a || {})); b = b || {};
@@ -1660,12 +1664,12 @@ Antworte NUR mit JSON in genau dieser Form:
       }
       try { localStorage.setItem(OWNER_KEY, user.uid); } catch (e) { }
       PROG.unsubscribe = PROG.doc.onSnapshot(s => {
-        if (generation !== PROG.generation || !s.exists) return;
+        if (generation !== PROG.generation || !s.exists || s.metadata.hasPendingWrites) return;
         const remote = s.data();
         if (!remote.st || (remote.ts || 0) <= PROG.lastTs) return;
         const localTs = st._ts || 0; progApply(remote, true); PROG.lastTs = remote.ts || 0; PROG.error = ''; PROG.state = 'cloud'; progChip();
         if (localTs > PROG.lastTs) progPush();
-        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route(true);
+        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route(true, false);
       }, e => { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); });
       PROG.state = 'cloud'; progChip();
       if (needsUpload) progPush();
