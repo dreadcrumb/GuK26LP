@@ -6,6 +6,25 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   const BYID = Object.fromEntries(SUBJ.map(s => [s.id, s]));
   const ICON = META.icons;
   const $app = document.getElementById('app');
+  const THEME_KEY = 'lp-theme';
+
+  function themeToggle() {
+    const dark = document.documentElement.dataset.theme === 'dark';
+    const label = dark ? 'Hellmodus' : 'Dunkelmodus';
+    return `<button type="button" data-act="theme" aria-pressed="${dark}" aria-label="${dark ? 'Hellmodus einschalten' : 'Dunkelmodus einschalten'}">${svg(dark ? 'sun' : 'moon', dark ? '#FFF' : '#5A5470', 18)}${label}</button>`;
+  }
+
+  document.addEventListener('click', e => {
+    const button = e.target.closest('[data-act="theme"]');
+    if (!button) return;
+    const dark = document.documentElement.dataset.theme !== 'dark';
+    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    const searchIcon = document.querySelector('.search svg');
+    if (searchIcon) searchIcon.setAttribute('stroke', dark ? '#B0A9BF' : '#5A5470');
+    button.outerHTML = themeToggle();
+    try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); }
+    catch (err) { console.warn('Theme preference could not be saved.', err); }
+  });
 
   /* ---------- helpers ---------- */
   const E = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -127,8 +146,8 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
     const items = [['start', 'Start'], ['lernplan', 'Lernplan'], ['fortschritt', 'Fortschritt'], ['fehler', 'Fehlerkartei'], ['pruefung', 'Prüfungsmodus'], ['semester2', 'Semester 2']];
     return `<header class="top">
   <a class="logo" href="#start"><i>${svg('book', '#FFFFFF', 20)}</i><span class="lgt"><b>Lernportal GuK</b><small class="hello">${helloText()}</small></span></a>
-  <nav class="pills" aria-label="Hauptnavigation">${items.map(([h, n]) => `<a href="#${h}"${h === active ? ' aria-current="page"' : ''}>${n}</a>`).join('')}</nav>
-  <form class="search" role="search" data-act="search"><label for="sq" class="sr">Suche</label>${svg('search', '#5A5470', 18)}<input id="sq" type="search" placeholder="z. B. MRSA" value="${E(searchQ)}" autocomplete="off"><button class="btn" type="submit" style="min-height:40px;padding:0 16px;font-size:14px">Suchen</button></form>
+  <nav class="pills" aria-label="Hauptnavigation">${items.map(([h, n]) => `<a href="#${h}"${h === active ? ' aria-current="page"' : ''}>${n}</a>`).join('')}${themeToggle()}</nav>
+  <form class="search" role="search" data-act="search"><label for="sq" class="sr">Suche</label>${svg('search', document.documentElement.dataset.theme === 'dark' ? '#B0A9BF' : '#5A5470', 18)}<input id="sq" type="search" placeholder="z. B. MRSA" value="${E(searchQ)}" autocomplete="off"><button class="btn" type="submit" style="min-height:40px;padding:0 16px;font-size:14px">Suchen</button></form>
 </header>`;
   }
   function register(activeId) {

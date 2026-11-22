@@ -11,7 +11,28 @@
   --bad: #9B2C3A;
   --badb: #FDE2E4;
   --warm: #8C3F1E;
-  --warmb: #FDE6DA
+  --warmb: #FDE6DA;
+  --surface: #fff;
+  --surface-alt: #F7F5FB
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #191722;
+  --ink: #F0EDF7;
+  --mu: #B5AEC3;
+  --line: #3B3748;
+  --lav: #B5A7FF;
+  --lavl: #39334B;
+  --lavd: #D0C6FF;
+  --ok: #75D1A2;
+  --okb: #203A30;
+  --bad: #F28C98;
+  --badb: #47272D;
+  --warm: #F0B17D;
+  --warmb: #453327;
+  --surface: #252330;
+  --surface-alt: #211F2B
 }
 
 * {
@@ -102,7 +123,7 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 999px;
   padding: 6px
 }
@@ -139,7 +160,7 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 999px;
   padding: 0 6px 0 16px;
   min-height: 50px;
@@ -197,7 +218,7 @@ button {
 
 /* generic */
 .card {
-  background: #fff;
+  background: var(--surface);
   border-radius: 28px;
   padding: 26px
 }
@@ -243,7 +264,7 @@ button {
 }
 
 .btn.lt {
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   box-shadow: inset 0 0 0 2px var(--line)
 }
@@ -417,7 +438,7 @@ button {
 
 .sem2 div {
   flex: 1 1 200px;
-  background: #fff;
+  background: var(--surface);
   border: 2px dashed #D9D3EC;
   border-radius: 22px;
   padding: 14px 18px;
@@ -457,7 +478,7 @@ button {
   width: 56px;
   height: 56px;
   border-radius: 18px;
-  background: #fff;
+  background: var(--surface);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -486,7 +507,7 @@ button {
 .chnav {
   flex: 1 1 230px;
   max-width: 270px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 24px;
   padding: 14px;
   display: flex;
@@ -639,7 +660,7 @@ button {
 
 .jk em {
   font-style: normal;
-  background: #fff;
+  background: var(--surface);
   border-radius: 999px;
   padding: 2px 9px;
   font-size: 13px
@@ -659,7 +680,7 @@ button {
 .stats>div {
   border-radius: 22px;
   padding: 14px 18px;
-  background: #fff
+  background: var(--surface)
 }
 
 .stats b {
@@ -670,7 +691,7 @@ button {
 }
 
 .qcard {
-  background: #fff;
+  background: var(--surface);
   border-radius: 28px;
   padding: 28px;
   display: flex;
@@ -704,7 +725,7 @@ button {
   min-height: 60px;
   border-radius: 20px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-size: 17px;
   font-weight: 700;
   color: var(--ink);
@@ -790,7 +811,7 @@ button {
 }
 
 .fb details {
-  background: #fff;
+  background: var(--surface);
   border-radius: 14px;
   padding: 10px 14px;
   font-size: 14px
@@ -817,7 +838,7 @@ button {
   padding: 0 16px;
   border-radius: 999px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-weight: 800;
   cursor: pointer;
   color: var(--ink)
@@ -836,7 +857,7 @@ select.sel {
   border-radius: 16px;
   border: 2px solid var(--line);
   padding: 0 14px;
-  background: #fff;
+  background: var(--surface);
   color: var(--ink);
   width: 100%;
   max-width: 520px
@@ -849,7 +870,7 @@ select.sel {
   min-height: 48px;
   padding: 0 18px;
   border-radius: 999px;
-  background: #fff;
+  background: var(--surface);
   font-weight: 700;
   font-size: 15px;
   cursor: pointer
@@ -909,7 +930,7 @@ select.sel {
   min-height: 60px;
   border-radius: 20px;
   border: 2px solid;
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -955,7 +976,7 @@ select.sel {
   padding: 10px 16px;
   border-radius: 20px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
@@ -988,7 +1009,7 @@ select.sel {
 /* search */
 .hit {
   display: block;
-  background: #fff;
+  background: var(--surface);
   border-radius: 22px;
   padding: 14px 18px;
   text-decoration: none;
@@ -1027,7 +1048,7 @@ select.sel {
 }
 
 .lern .sub {
-  background: #fff;
+  background: var(--surface);
   border-radius: 24px;
   padding: 18px 22px;
   margin: 0 0 14px
@@ -1147,6 +1168,111 @@ select.sel {
 .lern .src {
   color: var(--mu);
   font-size: 13px
+}
+
+:root[data-theme="dark"] .lern {
+  --card: var(--surface);
+  --bg2: var(--bg);
+  --tx: var(--ink);
+  --bd: var(--line);
+  --hl: #493D25;
+  --pu: #C7BAFF;
+  --pub: #39334B;
+  --st: #E8BF73;
+  --stb: #453A26;
+  --acb: #39334B;
+  --ok: #75D1A2;
+  --okb: #203A30;
+  --bad: #F28C98;
+  --badb: #47272D
+}
+
+:root[data-theme="dark"] .lern b,
+:root[data-theme="dark"] .lern table td:first-child {
+  color: var(--ink)
+}
+
+:root[data-theme="dark"] .lern .sub.nolz {
+  background: var(--surface-alt)
+}
+
+:root[data-theme="dark"] .band {
+  background: var(--surface-alt) !important;
+  color: var(--ink) !important
+}
+
+:root[data-theme="dark"] .band .back {
+  color: var(--ink) !important
+}
+
+:root[data-theme="dark"] .band .ico {
+  background: var(--surface)
+}
+
+:root[data-theme="dark"] .logo i {
+  background: #655598
+}
+
+:root[data-theme="dark"] .pills a[aria-current],
+:root[data-theme="dark"] .pills button[aria-pressed="true"],
+:root[data-theme="dark"] .seg button[aria-pressed="true"] {
+  background: var(--lav);
+  color: #211D2C
+}
+
+:root[data-theme="dark"] .pills a[aria-current] svg,
+:root[data-theme="dark"] .pills button[aria-pressed="true"] svg {
+  stroke: #211D2C
+}
+
+:root[data-theme="dark"] .btn:not(.lt) {
+  background: var(--lav);
+  color: #211D2C
+}
+
+:root[data-theme="dark"] .b-big {
+  background: var(--surface-alt);
+  color: var(--ink)
+}
+
+:root[data-theme="dark"] .practice.pri,
+:root[data-theme="dark"] .wday.today {
+  background: var(--lavd);
+  color: #211D2C
+}
+
+:root[data-theme="dark"] [style*="background:#fff"],
+:root[data-theme="dark"] [style*="background: #fff"],
+:root[data-theme="dark"] [style*="background:#FFFFFF"],
+:root[data-theme="dark"] [style*="background: #FFFFFF"] {
+  background: var(--surface) !important;
+  color: var(--ink)
+}
+
+:root[data-theme="dark"] .rt[aria-pressed="true"] {
+  color: var(--ink)
+}
+
+:root[data-theme="dark"] .ovrow,
+:root[data-theme="dark"] .lern .sub.nolz,
+:root[data-theme="dark"] .srcbox,
+:root[data-theme="dark"] .qsrc,
+:root[data-theme="dark"] .qnav {
+  background: var(--surface-alt)
+}
+
+:root[data-theme="dark"] .srcbox,
+:root[data-theme="dark"] .qsrc {
+  color: var(--ink)
+}
+
+:root[data-theme="dark"] .srch,
+:root[data-theme="dark"] .sloc {
+  color: var(--mu)
+}
+
+:root[data-theme="dark"] .lern table tr:nth-child(even) td {
+  background: var(--surface-alt)
 }
 
 @media (max-width:860px) {
@@ -1319,7 +1445,7 @@ a.pgn:hover {
   min-height: 76px;
   border-radius: 22px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-size: 20px;
   font-weight: 800;
   color: var(--ink);
@@ -1369,7 +1495,7 @@ a.pgn:hover {
   padding: 9px 14px;
   border-radius: 14px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-size: 15px;
   font-weight: 700;
   color: var(--ink);
@@ -1431,7 +1557,7 @@ a.pgn:hover {
 .dbox {
   border-radius: 20px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   padding: 10px;
   min-height: 96px;
   display: flex;
@@ -1482,7 +1608,7 @@ a.pgn:hover {
   padding: 8px 10px 8px 12px;
   border-radius: 18px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   font-weight: 700;
   cursor: grab;
   touch-action: none;
@@ -1640,7 +1766,7 @@ a.pgn:hover {
   border: 2px solid var(--line);
   padding: 0 12px;
   color: var(--ink);
-  background: #fff
+  background: var(--surface)
 }
 
 .wd {
@@ -1745,7 +1871,7 @@ a.pgn:hover {
   padding: 10px 12px;
   border-radius: 18px;
   border: 2px solid var(--line);
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
   color: var(--ink);
   text-align: left
@@ -1850,7 +1976,7 @@ a.pgn:hover {
   align-items: center;
   justify-content: space-between;
   gap: 10px 16px;
-  background: #fff;
+  background: var(--surface);
   border-radius: 22px;
   padding: 14px 18px;
   box-shadow: inset 0 0 0 2px #DDF3EA
@@ -2147,7 +2273,7 @@ mark.ul.c-b {
   border-radius: 12px;
   padding: 0 12px;
   font-weight: 800;
-  background: #fff;
+  background: var(--surface);
   color: #2A2440;
   cursor: pointer;
   font-size: 14px
@@ -2171,7 +2297,7 @@ mark.ul.c-b {
 
 /* Box unter dem Kapitel */
 .mybox {
-  background: #fff;
+  background: var(--surface);
   border-radius: 22px;
   padding: 20px;
   display: flex;
@@ -2264,7 +2390,7 @@ body.noscroll {
 }
 
 .gbox {
-  background: #fff;
+  background: var(--surface);
   border-radius: 24px;
   max-width: 720px;
   width: 100%;
@@ -2520,7 +2646,7 @@ mark.ul.c-must {
 }
 
 .rt[aria-pressed="true"] {
-  background: #fff;
+  background: var(--surface);
   color: #2A2440;
   box-shadow: 0 0 0 3px #C9B8FF
 }
@@ -2665,7 +2791,7 @@ body.tool-on .lern ::selection {
   height: 22px;
   border-radius: 7px;
   border: 2px solid #B9B1D0;
-  background: #fff;
+  background: var(--surface);
   display: grid;
   place-items: center
 }
@@ -3098,7 +3224,7 @@ body.gated #app {
 
 .gcard {
   width: min(360px, 100%);
-  background: #fff;
+  background: var(--surface);
   border-radius: 24px;
   padding: 26px 24px;
   display: flex;
@@ -3331,7 +3457,7 @@ body.gated #app {
   position: relative;
   padding: 18px 20px 14px;
   border-radius: 20px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid var(--line, #ECE9F3);
   margin: 14px 0;
   box-shadow: 0 2px 0 rgba(42, 36, 64, .04)
@@ -3741,7 +3867,7 @@ body.gated #app {
 
 .lern .lzlist dd {
   margin: 4px 0 0 0;
-  background: #fff;
+  background: var(--surface);
   border-radius: 12px;
   padding: 8px 12px
 }
@@ -3817,7 +3943,7 @@ body.gated #app {
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--surface);
   display: grid;
   place-items: center;
   font-size: 17px;
@@ -4020,7 +4146,7 @@ body.gated #app {
   margin: 12px 0;
   padding: 10px;
   border-radius: 14px;
-  background: #fff;
+  background: var(--surface);
   border: 1px solid #ECE9F3;
   cursor: zoom-in;
   max-width: 720px
@@ -4071,7 +4197,7 @@ body.gated #app {
   max-width: 96vw;
   max-height: 84vh;
   border-radius: 10px;
-  background: #fff
+  background: var(--surface)
 }
 
 .lbox .lbc {
