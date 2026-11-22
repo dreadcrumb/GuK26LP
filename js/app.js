@@ -110,6 +110,15 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   function okCount(id) { return Object.keys(st.ok[id] || {}).length; }
   function pct(id) { const s = BYID[id]; return s.nq ? Math.min(100, Math.round(100 * okCount(id) / s.nq)) : 0; }
   function wrongList() { return Object.keys(st.wrong).map(k => { const [id, qi] = k.split(':'); return [id, +qi]; }).filter(([id]) => BYID[id]); }
+  function dueCardPairs(now = Date.now()) {
+    return Object.entries(st.srs).reduce((due, [key, r]) => {
+      const split = key.lastIndexOf(':'), id = key.slice(0, split), rawQi = key.slice(split + 1), qi = +rawQi;
+      if (split < 0 || !BYID[id] || !/^\d+$/.test(rawQi) || !r || !Number.isFinite(r.due) || r.due > now) return due;
+      const q = data(id).qs[qi];
+      if (q && !q.hide && !isDnd(q)) due.push({ id, qi, due: r.due });
+      return due;
+    }, []).sort((a, b) => a.due - b.due).map(({ id, qi }) => [id, qi]);
+  }
   function record(id, qi, correct) {
     touchDay(); st.today.n++;
     const d = today(); st.daily[d] = (st.daily[d] || 0) + 1;
@@ -181,7 +190,7 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   function viewHome() {
     const last = st.last && BYID[st.last.id] ? st.last : { id: SUBJ[0].id, k: 0 };
     const ls = BYID[last.id], ld = data(last.id), lsec = ld.secs[last.k] || ld.secs[0];
-    const nWrong = wrongList().length, nToday = st.today.d === today() ? st.today.n : 0, str = streak();
+    const nWrong = wrongList().length, nDue = dueCardPairs().length, nToday = st.today.d === today() ? st.today.n : 0, str = streak();
     const bento = `<section class="bento" aria-label="Heute">
   <div class="b-big"><span style="font-size:15px;font-weight:800;color:#C9BFF5">${st.last ? 'Schön, dass du da bist! Weiterlernen:' : 'Willkommen! Starte hier:'}</span><h1>${E(lsec.t)}</h1><span style="font-size:16px;color:#D6D1E8">${E(ls.name)} · Kapitel ${lsec.k + 1} von ${ld.secs.length}</span>
   <div class="prog" style="background:#453D63"><i style="width:${pct(last.id)}%;background:#C9BFF5"></i></div>
@@ -190,13 +199,14 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   <div class="b-sm" style="background:#FDE6DA;color:#8C3F1E">${svg('flame', '#8C3F1E', 26)}<span class="b-num">${str}</span><span style="font-size:15px;font-weight:700">${str === 1 ? 'Tag' : 'Tage'} in Folge</span></div>
   <a class="b-sm" href="#fortschritt" style="background:#DDF3EA;color:#1F6B4D;text-decoration:none">${svg('check', '#1F6B4D', 26)}<span class="b-num">${nToday}/30</span><span style="font-size:15px;font-weight:700">Fragen heute · ${fmtN(st.pts || 0)} Punkte gesamt →</span></a>
 </section>`;
+    const dueReview = nDue ? `<section class="card" style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap"><div><span class="lbl muted">Wiederholung</span><h2 class="h2" style="margin:4px 0">Heute sind ${nDue} Karteikarten fällig</h2><p class="small" style="margin:0">Alle Fächer · sortiert nach deinem Wiederholungsplan.</p></div><button class="btn" type="button" data-act="srsstart">Jetzt wiederholen</button></section>` : '';
     const rows = SUBJ.map(s => {
       const kk = st.lastBy[s.id] || 0;
       const m = MODES.filter(x => x[0] !== 'themen').map(([m, lbl, ic]) => `<a href="#f-${s.id}-${m === 'lern' ? 'lern-' + kk : m}" aria-label="${E(s.name)}: ${lbl}" title="${lbl}">${svg(ic, s.ink, 20)}</a>`).join('');
       return `<div class="row"><span class="num" style="background:${s.bg};color:${s.ink}">${s.n}</span><a class="rowt" href="#f-${s.id}"><b>${E(s.name)}</b><span>${E(s.sub)} · ${s.nq} Fragen</span></a>${daysTo(s.id) != null && daysTo(s.id) >= 0 ? `<span class="tag" style="background:#fff;color:${s.ink};box-shadow:inset 0 0 0 2px ${s.bg}">${svg('cal', s.ink, 14)} ${daysTo(s.id)} T</span>` : ''}<span class="tag" style="background:${s.bg};color:${s.ink}">${pct(s.id)} %</span><nav class="modes" aria-label="${E(s.name)} öffnen">${m}</nav></div>`;
     }).join('');
     const gameTile = `<a class="gametile" href="#spiel"><img src="${img('gameapple')}" alt="Mrs. Granny Smith" width="120" height="112"><span class="gt-tx"><span class="gt-k">Entspannung &amp; Lernen</span><b>An Apple a Day</b><span>Lauf mit Mrs. Granny Smith durchs Klinikum und lerne alle Stationen kennen.</span></span><span class="gt-go">Jetzt spielen ›</span></a>`;
-    shell('start', null, bento + gameTile + `<section class="card" aria-labelledby="inh"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px"><h2 class="h2" id="inh">Inhalt · Semester 1</h2><span class="small">Titel öffnet den Lernteil · Symbole: Lernen, Quiz, Karten, Zuordnen · Register rechts springt ins Fach</span></div>${rows}</section>`
+    shell('start', null, bento + dueReview + gameTile + `<section class="card" aria-labelledby="inh"><div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px"><h2 class="h2" id="inh">Inhalt · Semester 1</h2><span class="small">Titel öffnet den Lernteil · Symbole: Lernen, Quiz, Karten, Zuordnen · Register rechts springt ins Fach</span></div>${rows}</section>`
       + todayCard() + sem2Block() + `<p class="small" style="text-align:center">Dein Fortschritt wird nur in diesem Browser auf diesem Gerät gespeichert.</p>`);
   }
   function sem2Block() {
@@ -772,14 +782,32 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
     const due = pool.filter(i => st.srs[id + ':' + i] && st.srs[id + ':' + i].due <= now);
     const fresh = shuffle(pool.filter(i => !st.srs[id + ':' + i]));
     const later = pool.filter(i => st.srs[id + ':' + i] && st.srs[id + ':' + i].due > now).sort((a, b) => st.srs[id + ':' + a].due - st.srs[id + ':' + b].due);
-    KC = { id, k, deck: spaceVariants(variantFirst([...shuffle(due), ...fresh, ...later].map(i => [id, i])).slice(0, 40)).map(p => p[1]), i: 0, flip: false, known: 0 };
+    KC = { id, k, deck: spaceVariants(variantFirst([...shuffle(due), ...fresh, ...later].map(i => [id, i])).slice(0, 40)), i: 0, flip: false, known: 0, global: false };
+    renderKarte();
+  }
+  function viewDueKarten() {
+    const deck = dueCardPairs();
+    if (!deck.length) {
+      shell('start', null, `<section class="card"><span class="lbl muted">Wiederholung</span><h1 class="h2">Keine Karteikarten fällig</h1><p class="muted" style="margin:0">Schau später wieder vorbei oder übe Karteikarten in einem Fach.</p><a class="btn" style="align-self:flex-start" href="#start">Zur Startseite</a></section>`);
+      return;
+    }
+    KC = { id: deck[0][0], k: -1, deck: spaceVariants(variantFirst(deck)), i: 0, flip: false, known: 0, global: true };
     renderKarte();
   }
   function renderKarte() {
-    const { id, k } = KC, s = BYID[id], d = data(id);
-    if (!KC.deck.length) { shell('start', id, band(id, 'karten', k) + `<div class="qwrap"><section class="qcard"><h1>Keine Karten in diesem Kapitel.</h1></section></div>`); return; }
-    if (KC.i >= KC.deck.length) { shell('start', id, band(id, 'karten', k) + `<div class="qwrap"><section class="qcard"><span class="lbl muted">Stapel fertig</span><h1>${KC.known} von ${KC.deck.length} Karten gewusst.</h1><p class="muted" style="margin:0">Karten, die du mit „Nochmal“ oder „Schwer“ bewertet hast, kommen bald wieder.</p><div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn" type="button" data-act="kagain">Nächster Stapel</button><a class="btn lt" href="#f-${id}-lern-${k >= 0 ? k : (st.lastBy[id] || 0)}">Zum Lernteil</a></div></section></div>`); return; }
-    const qi = KC.deck[KC.i], q = d.qs[qi], r = st.srs[id + ':' + qi];
+    if (!KC.deck.length) {
+      shell('start', KC.id, band(KC.id, 'karten', KC.k) + `<div class="qwrap"><section class="qcard"><h1>Keine Karten in diesem Kapitel.</h1></section></div>`);
+      return;
+    }
+    if (KC.i >= KC.deck.length) {
+      const id = KC.id, k = KC.k;
+      const actions = KC.global
+        ? `<button class="btn" type="button" data-act="kagain">Fällige Karten neu laden</button><a class="btn lt" href="#start">Zur Startseite</a>`
+        : `<button class="btn" type="button" data-act="kagain">Nächster Stapel</button><a class="btn lt" href="#f-${id}-lern-${k >= 0 ? k : (st.lastBy[id] || 0)}">Zum Lernteil</a>`;
+      shell('start', id, (KC.global ? '' : band(id, 'karten', k)) + `<div class="qwrap"><section class="qcard"><span class="lbl muted">${KC.global ? 'Wiederholung abgeschlossen' : 'Stapel fertig'}</span><h1>${KC.known} von ${KC.deck.length} Karten gewusst.</h1><p class="muted" style="margin:0">Karten, die du mit „Nochmal“ oder „Schwer“ bewertet hast, kommen bald wieder.</p><div style="display:flex;gap:10px;flex-wrap:wrap">${actions}</div></section></div>`);
+      return;
+    }
+    const [id, qi] = KC.deck[KC.i], d = data(id), s = BYID[id], q = d.qs[qi], k = KC.global && q.sec >= 0 ? q.sec : KC.k, r = st.srs[id + ':' + qi];
     const pc = Math.round(100 * KC.i / KC.deck.length);
     const right = q.o.filter(o => o[1]).map(o => E(o[0]));
     const imgsrc = q.i ? img(q.i) : null;
@@ -794,17 +822,17 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
    ${KC.flip ? `<div class="fc" style="flex:1 1 320px;background:${s.ink};color:#fff;cursor:default">${back}</div>` : ''}
   </div>
   ${KC.flip ? `<div class="rate">${nextIv.map(([l, c, t, v]) => `<button type="button" data-act="krate" data-v="${v}" style="border-color:${c}"><span style="color:${c}">${l}</span><small>${t}</small></button>`).join('')}</div>` : `<button class="btn" type="button" data-act="kflip" style="align-self:center">Antwort zeigen</button>`}
-  <p class="small" style="text-align:center;margin:0">Karten, die du falsch hattest, kommen öfter. Gekonnte Karten seltener.</p></div>`);
+  <p class="small" style="text-align:center;margin:0">${KC.global ? 'Fällige Karten aus allen Fächern · deine Bewertung plant die nächste Wiederholung.' : 'Karten, die du falsch hattest, kommen öfter. Gekonnte Karten seltener.'}</p></div>`);
   }
   function rateKarte(v) {
-    const { id } = KC, qi = KC.deck[KC.i], key = id + ':' + qi, r = st.srs[key] || { iv: 0, due: 0 };
+    const [id, qi] = KC.deck[KC.i], key = id + ':' + qi, r = st.srs[key] || { iv: 0, due: 0 };
     const MIN = 60000, DAY = 86400000;
     if (v === 0) { r.iv = 0; r.due = Date.now() + MIN; }
     else if (v === 1) { r.iv = Math.max(0, r.iv * 0.5); r.due = Date.now() + 10 * MIN; }
     else if (v === 2) { r.iv = r.iv ? Math.max(1, r.iv * 2.5) : 1; r.due = Date.now() + r.iv * DAY; KC.known++; }
     else { r.iv = r.iv ? Math.max(4, r.iv * 4) : 4; r.due = Date.now() + r.iv * DAY; KC.known++; }
     st.srs[key] = r; touchDay(); save();
-    if (v === 0 && KC.deck.length - KC.i < 60) KC.deck.push(qi);
+    if (v === 0 && KC.deck.length - KC.i < 60) KC.deck.push([id, qi]);
     KC.i++; KC.flip = false; renderKarte();
   }
 
@@ -1140,7 +1168,8 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
       case 'ownquiz': { const id = b.dataset.id, k = +b.dataset.k; data(id); const pool = (MY.q[id] || []).filter(x => !x.del && x.k === k).map(x => ownIdx(id, x.id)).filter(i => i >= 0); if (pool.length) startQuiz(shuffle(pool).map(i => [id, i]), { exam: false, home: 'subj', ret: k }); break; }
       case 'kflip': KC.flip = !KC.flip; renderKarte(); break;
       case 'krate': rateKarte(+b.dataset.v); break;
-      case 'kagain': viewKarten(KC.id, KC.k); break;
+      case 'kagain': KC.global ? viewDueKarten() : viewKarten(KC.id, KC.k); break;
+      case 'srsstart': viewDueKarten(); break;
       case 'zl': ZO.sel = +b.dataset.j; ZO.bad = null; ZO.msg = ''; renderZO(); break;
       case 'zr': {
         const j = +b.dataset.j; if (ZO.sel == null) { ZO.msg = 'Wähle zuerst links eine Antwort.'; ZO.msgok = false; renderZO(); break; }
