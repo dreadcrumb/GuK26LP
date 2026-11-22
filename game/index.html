@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>An Apple a Day</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gluten:wght@500;700;800&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="game.css">
+</head>
+<body>
+<div id="loading">Mrs. Granny Smith zieht ihre Crocs an …</div>
+<div id="stage"><div id="wrap">
+<canvas id="cv" aria-label="Spielfeld: Mrs. Granny Smith läuft durch den Krankenhausflur"></canvas>
+<div id="hud" hidden>
+ <div class="l"><button type="button" id="bPause" class="btn" aria-label="Pause"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="1" width="4" height="14" rx="2" fill="#2B2A33"></rect><rect x="10" y="1" width="4" height="14" rx="2" fill="#2B2A33"></rect></svg></button>
+  <div class="chip" id="hHearts" aria-label="Leben"><svg width="20" height="18" viewBox="-12 -12 24 22" aria-hidden="true"><path d="M0 8 C-12 0 -12 -10 -5 -11 C-2 -11 0 -9 0 -6 C0 -9 2 -11 5 -11 C12 -10 12 0 0 8Z" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2.2"></path></svg><svg width="20" height="18" viewBox="-12 -12 24 22" aria-hidden="true"><path d="M0 8 C-12 0 -12 -10 -5 -11 C-2 -11 0 -9 0 -6 C0 -9 2 -11 5 -11 C12 -10 12 0 0 8Z" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2.2"></path></svg><svg width="20" height="18" viewBox="-12 -12 24 22" aria-hidden="true"><path d="M0 8 C-12 0 -12 -10 -5 -11 C-2 -11 0 -9 0 -6 C0 -9 2 -11 5 -11 C12 -10 12 0 0 8Z" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2.2"></path></svg><svg width="20" height="18" viewBox="-12 -12 24 22" aria-hidden="true"><path d="M0 8 C-12 0 -12 -10 -5 -11 C-2 -11 0 -9 0 -6 C0 -9 2 -11 5 -11 C12 -10 12 0 0 8Z" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2.2"></path></svg><svg width="20" height="18" viewBox="-12 -12 24 22" aria-hidden="true"><path d="M0 8 C-12 0 -12 -10 -5 -11 C-2 -11 0 -9 0 -6 C0 -9 2 -11 5 -11 C12 -10 12 0 0 8Z" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2.2"></path></svg></div>
+  <div class="chip" id="hProg">Frage 1 / 10</div></div>
+ <div class="r"><button type="button" class="btn musbtn" id="bSfx" aria-pressed="true" aria-label="Toneffekte ausschalten"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8 h3 l5 -4 v12 l-5 -4 h-3z" fill="#2B2A33"></path><path d="M14 7 q2 3 0 6 M16 5 q4 5 0 10" stroke="#2B2A33" stroke-width="1.8" fill="none" stroke-linecap="round"></path><path class="x" d="M2 2 L18 18" stroke="#FF3D6E" stroke-width="2.8" stroke-linecap="round"></path></svg></button><button type="button" class="btn musbtn" id="bMus" aria-pressed="true" aria-label="Musik ausschalten"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 15 V4 l9 -2 v11" fill="none" stroke="#2B2A33" stroke-width="2.2" stroke-linejoin="round"></path><circle cx="5" cy="15" r="2.6" fill="#2B2A33"></circle><circle cx="14" cy="13" r="2.6" fill="#2B2A33"></circle><path class="x" d="M2 2 L18 18" stroke="#FF3D6E" stroke-width="2.8" stroke-linecap="round"></path></svg></button><div class="chip" id="hLvl" style="background:#E0F3FF">Level 1</div><div class="chip" style="background:#EDE6FF" id="hTod">Nachtdienst</div>
+  <div class="chip"><svg width="18" height="18" viewBox="-9 -10 18 20" aria-hidden="true"><circle cx="0" cy="1" r="7" fill="#FF5A5F" stroke="#2B2A33" stroke-width="2"></circle><path d="M0 -6 q1 -3 3 -3" stroke="#2B2A33" stroke-width="2" fill="none"></path></svg><span id="hApples">0</span></div>
+  <div class="chip"><span id="hScore">0</span>&nbsp;P</div>
+  <div class="chip"><span id="hStreak">×1</span></div></div>
+</div>
+<div id="qbar" hidden><div id="qText"></div><div id="qSrc" hidden></div><div id="qOpts" hidden></div><div id="qRes" class="qres" hidden></div></div>
+<canvas id="cvTop" aria-hidden="true"></canvas>
+<div id="ctrl" hidden><div class="col"><button type="button" class="btn" id="bUp" aria-label="Bahn nach oben">▲</button><button type="button" class="btn" id="bDn" aria-label="Bahn nach unten">▼</button></div><div class="col"><div style="display:flex;gap:8px"><button type="button" class="btn" id="bL" aria-label="Zurück laufen">◀</button><button type="button" class="btn" id="bR" aria-label="Vorwärts laufen">▶</button></div><button type="button" class="btn" id="bJump">Springen</button></div></div>
+
+<div id="menu" class="ov" hidden>
+ <div class="left">
+  <div class="title">An Apple<br>a Day</div>
+  <div class="two"><span class="chip">mit Mrs. Granny Smith</span></div>
+  <img id="mApple" alt="Mrs. Granny Smith winkt mit Spritze und Katheter">
+ </div>
+ <div class="right card">
+  <div class="modes">
+   <button type="button" class="btn mode" data-mode="lern" aria-pressed="true"><span>Lernlauf</span><small>Frage-Tor + 4 Antwort-Bahnen</small></button>
+   <button type="button" class="btn mode" data-mode="karte" aria-pressed="false"><span>Klinik-Karte</span><small>Freispiel durchs Krankenhaus</small></button>
+  </div>
+  <div id="mLern" style="display:flex;flex-direction:column;gap:9px">
+   <label class="lbl" id="mSubjRow" for="mSubj" style="display:flex;flex-direction:column;gap:4px">Station &amp; Fragen<select id="mSubj"></select></label><span id="mStation" class="lbl" style="color:#5A4BD1;margin-top:-4px">Station: Klinikum</span>
+   <div class="row"><span id="mCount" style="display:contents"><span class="lbl">Anzahl</span><div class="seg" role="group" aria-label="Anzahl Fragen"><button type="button" data-count="10">10</button><button type="button" data-count="20">20</button><button type="button" data-count="30">30</button><button type="button" data-count="0">Alle</button></div></span>
+   <span class="lbl" style="margin-left:2px">Tempo</span><div class="seg" role="group" aria-label="Tempo"><button type="button" data-tempo="gemuetlich">Gemütlich</button><button type="button" data-tempo="normal">Normal</button></div></div>
+  </div>
+  <div class="row"><button type="button" class="btn tog" id="mSfx" aria-pressed="true">Geräusche an</button><button type="button" class="btn tog" id="mMus" aria-pressed="true">Musik an</button><span class="lbl" id="mBest" style="margin-left:auto">Bestwert: 0</span></div>
+  <button type="button" class="btn" id="mStart">Los geht's!</button>
+  <div class="foot"><span>← → laufen · ↑ ↓ Bahn · Leertaste springen · 1–4 antworten · P Pause<br><span class="musinfo">♫ Lo-Fi</span></span><a class="portal" href="../index.html#start" onclick="if(parent!==window){parent.postMessage('aad-back','*');return false}">Zurück zum Lernportal</a></div>
+ </div>
+</div>
+
+<div id="mapUi" hidden>
+ <button type="button" class="btn" id="kBack">‹ Menü</button>
+ <div class="top"><div class="chip" id="kWhere">Erdgeschoss</div><div class="chip" id="kStars">★ 0 / 33</div><button type="button" class="btn musbtn" id="kSfx" aria-pressed="true" aria-label="Toneffekte ausschalten"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 8 h3 l5 -4 v12 l-5 -4 h-3z" fill="#2B2A33"></path><path d="M14 7 q2 3 0 6 M16 5 q4 5 0 10" stroke="#2B2A33" stroke-width="1.8" fill="none" stroke-linecap="round"></path><path class="x" d="M2 2 L18 18" stroke="#FF3D6E" stroke-width="2.8" stroke-linecap="round"></path></svg></button><button type="button" class="btn musbtn" id="kMus" aria-pressed="true" aria-label="Musik ausschalten"><svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 15 V4 l9 -2 v11" fill="none" stroke="#2B2A33" stroke-width="2.2" stroke-linejoin="round"></path><circle cx="5" cy="15" r="2.6" fill="#2B2A33"></circle><circle cx="14" cy="13" r="2.6" fill="#2B2A33"></circle><path class="x" d="M2 2 L18 18" stroke="#FF3D6E" stroke-width="2.8" stroke-linecap="round"></path></svg></button></div>
+ <div class="hint">Station oder Namen anklicken = direkt öffnen · ← → laufen · ↑ ↓ Lift · Leertaste: betreten · Esc Menü</div>
+</div>
+<div id="mapCard" class="ov" hidden role="dialog" aria-modal="true" aria-labelledby="kcName"><div class="card"><img id="kcImg" alt="Mrs. Granny Smith jubelt"><div><div id="kcStars">☆☆☆</div><h2 id="kcName">Station</h2><div class="sub" id="kcSub"></div><div class="sub" id="kcMus" style="color:#5A4BD1"></div><div class="sub" id="kcBest" style="font-size:12px"></div><div class="row"><button type="button" class="btn" id="kcLern" style="background:#FF9EB5">Lernlauf</button><button type="button" class="btn" id="kcBack">Zurück</button></div><div class="sub" style="font-size:11.5px;margin-top:6px">Sterne: ab 5 Fragen · 50 % ★ · 75 % ★★ · 90 % ★★★</div></div></div></div>
+<div id="visite" class="ov" hidden role="dialog" aria-modal="true" aria-labelledby="vName"><div class="card vcard"><img id="vImg" alt=""><div class="vbody"><div class="vhead"><span id="vName" class="g">Dr. Aubergine fragt:</span><span class="vtime"><span id="vSec">15</span> s</span></div><div class="vbar"><i id="vBar"></i></div><div id="vRule" style="font-weight:800;font-size:11.5px;color:#5E5446;margin-top:3px"></div><div id="vQ" class="g"></div><div id="vSrc" hidden></div><div id="vOpts"></div><div id="vFb" class="vfb"></div></div></div></div>
+<div id="task" class="ov" hidden role="dialog" aria-modal="true" aria-labelledby="tName"><div class="card tcard"><img id="tImg" alt=""><div class="vbody"><div class="vhead"><span id="tName" class="g">Aufgabe</span><span class="vtime"><span id="tSec">10</span> s</span></div><div class="vbar"><i id="tBar"></i></div><div id="tRule" style="font-weight:800;font-size:11px;color:#5E5446"></div><div id="tBody"></div><div id="tFb" class="vfb"></div></div></div></div>
+<div id="pauseOv" class="ov" hidden><div class="card"><img id="pApple" alt="Mrs. Granny Smith macht ein Nickerchen"><div style="display:flex;flex-direction:column;gap:10px"><div class="g" style="font-weight:800;font-size:30px">Pause</div><div class="musinfo" style="font-size:12px;font-weight:800;color:#5E5446;max-width:240px"></div><button type="button" class="btn" id="pResume" style="background:#7FE0B9">Weiter</button><button type="button" class="btn" id="pMenu">Zum Menü</button></div></div></div>
+
+<div id="result" class="ov" hidden><div class="card"><h2 id="rTitle">Schicht geschafft!</h2><div id="rStats"></div><div id="rWrong"></div><div class="row" style="justify-content:flex-end"><button type="button" class="btn" id="rMenu">Menü</button><button type="button" class="btn" id="rAgain" style="background:#FF5A5F;color:#fff">Nochmal</button></div></div></div>
+</div></div>
+<div id="rot" hidden><div class="title" style="font-size:30px">Dreh dein Handy quer</div><p style="font-weight:800;margin:0">Das Spiel ist fürs Querformat gemacht.</p><button type="button" class="btn" id="rotOk">Trotzdem spielen</button></div>
+<script>
+(function(){
+  var V='1'; /* bei Änderungen hochzählen, damit Browser neue Dateien laden */
+  var get=function(u){ return fetch(u+'?v='+V).then(function(r){ if(!r.ok) throw new Error(u); return r.json(); }); };
+  var load=function(u){ return new Promise(function(ok,no){ var s=document.createElement('script'); s.src=u+'?v='+V; s.onload=ok; s.onerror=no; document.body.appendChild(s); }); };
+  Promise.all([get('data/sprites.json'),get('data/questions.json')]).then(function(r){
+    window.GAME_SPR=r[0]; window.GAME_QD=r[1];
+    return load('lofi.js');
+  }).then(function(){ return load('game.js'); }).catch(function(e){
+    document.body.insertAdjacentHTML('afterbegin','<p style="padding:24px;font-family:system-ui">Das Spiel konnte nicht geladen werden. Bitte die Seite über einen Webserver öffnen (GitHub Pages oder <code>python3 -m http.server</code>).</p>');
+  });
+})();
+</script>
+</body>
+</html>
