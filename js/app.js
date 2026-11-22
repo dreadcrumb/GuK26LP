@@ -23,11 +23,12 @@ function zf() { const z = parseFloat(getComputedStyle(document.body).zoom); retu
   }
   function img(key) { return window.LP_DATA.images[key]; }
 
-  /* ---------- state (nur in diesem Browser) ---------- */
+  /* ---------- Lernstand ---------- */
   const KEY = 'lernportal-guk-v2';
+  const freshState = () => ({ last: null, lastBy: {}, read: {}, ok: {}, wrong: {}, srs: {}, days: [], today: { d: '', n: 0 }, onlyLz: false, seen: {}, pts: 0, ptsBy: {}, hist: [], daily: {}, best: {}, exams: {}, plan: { min: 60, wd: [1, 2, 3, 4, 5, 6] }, pdone: {} });
   let st;
   try { st = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { st = null; }
-  st = Object.assign({ last: null, lastBy: {}, read: {}, ok: {}, wrong: {}, srs: {}, days: [], today: { d: '', n: 0 }, onlyLz: false, seen: {}, pts: 0, ptsBy: {}, hist: [], daily: {}, best: {}, exams: {}, plan: { min: 60, wd: [1, 2, 3, 4, 5, 6] }, pdone: {} }, st || {});
+  st = Object.assign(freshState(), st || {});
   if (!st.geschV2) {
     st.geschV2 = 1; const M = [1, 2, 3, 4, 5, 6, 7, 9, 10, 15]; const N0 = 93;
     if (st.read.gesch) { const r = {}; Object.keys(st.read.gesch).forEach(k => { const n = M[+k]; if (n != null) r[n] = st.read.gesch[k]; }); st.read.gesch = r; }
@@ -1581,20 +1582,16 @@ Antworte NUR mit JSON in genau dieser Form:
   }
   gateInit();
 
-  /* ---------- Lernfortschritt mit Spitzname online speichern ----------
-     fortschritt/<nick>: kompletter Lernstand (st) + zuletzt gesehene Fragen (SEEN).
-     Jede*r mit demselben Spitznamen sieht denselben Stand – bewusst einfach gehalten. */
-  var PROG = { db: null, nick: null, state: 'off', timer: null, busy: false, again: false, lastTs: 0 };
-  function nickNorm(v) { return String(v || '').trim().toLowerCase().replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss').replace(/[^a-z0-9_-]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24); }
-  function nickGet() { try { return localStorage.getItem('lp-nick') || ''; } catch (e) { return ''; } }
-  function nickSet(n) { try { n ? localStorage.setItem('lp-nick', n) : localStorage.removeItem('lp-nick'); } catch (e) { } }
-  function progDoc() { return PROG.db.doc('fortschritt/' + PROG.nick); }
+  /* ---------- Firebase-Lernstandssynchronisierung ---------- */
+  const PROG = { auth: null, db: null, user: null, doc: null, state: 'off', timer: null, busy: false, again: false, lastTs: 0, generation: 0, unsubscribe: null, error: '' };
+  const OWNER_KEY = 'lp-sync-uid';
+  const CACHE_PREFIX = 'lp-sync-cache-';
   function progChip() {
     let c = document.getElementById('nickChip');
-    if (!c) { c = document.createElement('button'); c.id = 'nickChip'; c.type = 'button'; c.className = 'btn lt'; c.addEventListener('click', () => nickDialog(true)); document.body.appendChild(c); }
-    const t = PROG.state === 'cloud' ? 'gespeichert ✓' : PROG.state === 'saving' ? 'speichert …' : PROG.state === 'loading' ? 'lädt …' : PROG.state === 'error' ? 'offline – nur auf diesem Gerät' : 'nur auf diesem Gerät';
-    c.textContent = (PROG.nick ? '👤 ' + (nickDisplay() || PROG.nick) + ' · ' : '👤 Spitzname festlegen · ') + t;
-    c.title = PROG.nick ? 'Fortschritt wird unter diesem Spitznamen gespeichert. Klicken zum Wechseln.' : 'Spitzname eingeben, damit dein Fortschritt nicht verloren geht.';
+    if (!c) { c = document.createElement('button'); c.id = 'nickChip'; c.type = 'button'; c.className = 'btn lt'; c.addEventListener('click', accountDialog); document.body.appendChild(c); }
+    const status = PROG.state === 'cloud' ? 'synchronisiert ✓' : PROG.state === 'saving' ? 'speichert …' : PROG.state === 'loading' ? 'lädt …' : PROG.state === 'error' ? 'Sync fehlgeschlagen' : 'nur lokal';
+    c.textContent = (PROG.user ? '👤 ' + PROG.user.email + ' · ' : '☁️ Konto / Synchronisierung · ') + status;
+    c.title = PROG.user ? 'Konto und Lernstand-Synchronisierung verwalten' : 'Mit Konto anmelden, um den Lernstand zu synchronisieren';
   }
   function progMerge(a, b) { /* a = neuerer Stand (Basis), b = älterer: Erledigtes aus b bleibt erhalten */
     const m = JSON.parse(JSON.stringify(a || {})); b = b || {};
@@ -1603,65 +1600,153 @@ Antworte NUR mit JSON in genau dieser Form:
       Object.keys(B).forEach(id => { if (typeof B[id] === 'object' && B[id]) { A[id] = A[id] || {}; Object.keys(B[id]).forEach(k => { if (A[id][k] == null) A[id][k] = B[id][k]; }); } else if (A[id] == null || (typeof B[id] === 'number' && B[id] > A[id])) A[id] = B[id]; });
     });
     ['pdone', 'srs', 'exams'].forEach(f => { const A = m[f] = m[f] || {}, B = b[f] || {}; Object.keys(B).forEach(k => { if (A[k] == null) A[k] = B[k]; }); });
+    const wrong = m.wrong = m.wrong || {};
+    Object.keys(b.wrong || {}).forEach(k => { wrong[k] = Math.max(wrong[k] || 0, b.wrong[k] || 0); });
+    m.hist = [...new Map([...(m.hist || []), ...(b.hist || [])].map(h => [h.t, h])).values()].sort((x, y) => x.t - y.t).slice(-200);
+    const daily = m.daily = m.daily || {};
+    Object.keys(b.daily || {}).forEach(k => { daily[k] = Math.max(daily[k] || 0, b.daily[k] || 0); });
+    Object.keys(daily).sort().slice(0, Math.max(0, Object.keys(daily).length - 120)).forEach(k => delete daily[k]);
+    if (m.today && b.today && m.today.d === b.today.d) m.today.n = Math.max(m.today.n || 0, b.today.n || 0);
     m.days = [...new Set([...(m.days || []), ...(b.days || [])])].sort().slice(-400);
     m.pts = Math.max(m.pts || 0, b.pts || 0);
     return m;
   }
-  function progApply(remote) {
+  function progApply(remote, mergeLocal) {
     const local = JSON.parse(JSON.stringify(st));
-    const rs = remote.st || {}; if (rs.ok) { migKl1(rs); migHyg(rs); migGesch4(rs); } const merged = (rs._ts || 0) >= (local._ts || 0) ? progMerge(rs, local) : progMerge(local, rs);
+    const rs = remote.st || {}; if (rs.ok) { migKl1(rs); migHyg(rs); migGesch4(rs); }
+    const merged = mergeLocal ? ((rs._ts || 0) >= (local._ts || 0) ? progMerge(rs, local) : progMerge(local, rs)) : progMerge(rs, {});
     Object.keys(st).forEach(k => delete st[k]); Object.assign(st, merged);
-    const rseen = remote.seen || {}; Object.keys(rseen).forEach(k => { if (!SEEN[k] || rseen[k] > SEEN[k]) SEEN[k] = rseen[k]; });
+    const rseen = remote.seen || {};
+    if (mergeLocal) Object.keys(rseen).forEach(k => { if (!SEEN[k] || rseen[k] > SEEN[k]) SEEN[k] = rseen[k]; });
+    else SEEN = rseen;
     try { localStorage.setItem(KEY, JSON.stringify(st)); localStorage.setItem(SEENK, JSON.stringify(SEEN)); } catch (e) { }
   }
-  function progPush() { if (!PROG || !PROG.db || !PROG.nick || PROG.state === 'loading') return; clearTimeout(PROG.timer); PROG.timer = setTimeout(progFlush, 1500); }
+  function progPush() { if (!PROG || !PROG.db || !PROG.user || PROG.state === 'loading') return; clearTimeout(PROG.timer); PROG.timer = setTimeout(progFlush, 1500); }
   async function progFlush() {
-    if (!PROG.db || !PROG.nick) return; if (PROG.busy) { PROG.again = true; return; }
+    if (!PROG.db || !PROG.user || !PROG.doc) return; if (PROG.busy) { PROG.again = true; return; }
+    const doc = PROG.doc;
     PROG.busy = true; PROG.state = 'saving'; progChip();
-    try { const ts = Date.now(); await progDoc().set({ st, seen: SEEN, ts, v: 1, name: nickDisplay() }); PROG.lastTs = ts; PROG.state = 'cloud'; }
-    catch (e) { PROG.state = 'error'; }
-    PROG.busy = false; progChip(); if (PROG.again) { PROG.again = false; progPush(); }
+    try { const ts = Date.now(); await doc.set({ st, seen: SEEN, ts, v: 1 }); if (PROG.doc === doc) { PROG.lastTs = ts; PROG.error = ''; PROG.state = 'cloud'; } }
+    catch (e) { if (PROG.doc === doc) { PROG.error = firebaseError(e); PROG.state = 'error'; } }
+    if (PROG.doc === doc) { PROG.busy = false; progChip(); if (PROG.again) { PROG.again = false; progPush(); } }
   }
-  async function progPull(first) {
-    if (!PROG.db || !PROG.nick) return;
-    if (first) { PROG.state = 'loading'; progChip(); }
+  async function progSignIn(user, generation) {
+    if (!PROG.db || !user) return;
+    PROG.user = user; PROG.doc = PROG.db.collection('users').doc(user.uid);
+    PROG.state = 'loading'; PROG.error = ''; progChip();
     try {
-      const to = new Promise(r => setTimeout(() => r('timeout'), 10000)); const snap = await Promise.race([progDoc().get(), to]);
-      if (snap === 'timeout') { PROG.state = 'error'; progChip(); return; }
-      const d = snap.exists ? snap.data() : null;
-      if (d && typeof d.name === 'string' && d.name && nickNorm(d.name) === PROG.nick) { try { localStorage.setItem('lp-nick-name', d.name.slice(0, 24)); } catch (e) { } helloUpd(); }
-      if (d && d.st && (first || (d.ts || 0) > PROG.lastTs)) { progApply(d); PROG.lastTs = d.ts || 0; PROG.state = 'cloud'; progChip(); if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route(); if (first) progFlush(); }
-      else { PROG.state = 'cloud'; progChip(); if (first) progFlush(); }
-    }
-    catch (e) { PROG.state = 'error'; progChip(); }
-  }
-  function nickDialog(change) {
-    if (document.getElementById('nickDlg')) return; const d = document.createElement('div'); d.id = 'nickDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Spitzname');
-    const cur = PROG.nick ? (nickDisplay() || PROG.nick) : '';
-    d.innerHTML = `<div class="gcard"><h2 class="h2" style="font-size:20px;margin:0">Wer lernt hier?</h2><p class="small" style="margin:0">Gib deinen Spitznamen ein. Dein Lernfortschritt wird darunter online gespeichert und ist auf jedem Gerät wieder da, auf dem du denselben Namen eingibst.</p><p class="small" style="margin:0;color:#6B6480">Kein Passwort: Wer deinen Spitznamen kennt, sieht und verändert denselben Stand.</p><label class="small" for="nickIn">Spitzname</label><input id="nickIn" autocomplete="nickname" maxlength="24" value="${cur.replace(/"/g, '')}" placeholder="z. B. max"><p class="gmsg"></p><button class="btn" id="nickOk" type="button">Weiter</button>${change && cur ? '<button class="btn lt" id="nickOut" type="button">Abmelden (nur noch auf diesem Gerät)</button>' : ''}<button class="btn lt" id="nickNo" type="button">${change ? 'Abbrechen' : 'Ohne Spitzname weiter'}</button></div>`;
-    document.body.appendChild(d); setTimeout(() => { try { d.querySelector('#nickIn').focus(); } catch (e) { } }, 40);
-    const ok = async () => {
-      const n = nickNorm(d.querySelector('#nickIn').value); if (n.length < 2) { d.querySelector('.gmsg').textContent = 'Bitte mindestens 2 Zeichen (Buchstaben oder Zahlen).'; return; }
-      if (!PROG.db) { d.querySelector('.gmsg').textContent = 'Online-Speicher ist gerade nicht erreichbar – bitte in claude.ai angemeldet öffnen.'; return; }
-      const prev = PROG.nick; PROG.nick = n; nickSet(n); try { localStorage.setItem('lp-nick-name', d.querySelector('#nickIn').value.trim().slice(0, 24)); } catch (e) { } helloUpd(); progChip(); d.remove();
-      if (prev && prev !== n) { /* Wechsel: Stand des neuen Namens laden, eigener lokaler Stand wird mit übernommen */ }
-      PROG.lastTs = 0; await progPull(true);
-    };
-    d.querySelector('#nickOk').addEventListener('click', ok); d.querySelector('#nickIn').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); ok(); } });
-    d.querySelector('#nickNo').addEventListener('click', () => { if (!change) { try { localStorage.setItem('lp-nick-skip', '1'); } catch (e) { } } d.remove(); });
-    const out = d.querySelector('#nickOut'); if (out) out.addEventListener('click', () => { PROG.nick = null; nickSet(''); try { localStorage.removeItem('lp-nick-name'); } catch (e) { } helloUpd(); PROG.state = 'off'; progChip(); d.remove(); });
-  }
-  async function progInit() {
-    try {
-      if (!window.claude || !window.claude.use) return; const db = await window.claude.use('db'); if (!db) return;
-      PROG.db = db; PROG.nick = nickGet() || null; progChip();
-      if (PROG.nick) await progPull(true);
-      else {
-        let skip = null; try { skip = localStorage.getItem('lp-nick-skip'); } catch (e) { }
-        const ask = () => { if (GATE.open) nickDialog(false); else setTimeout(ask, 800); }; if (!skip) ask();
+      let owner = null; try { owner = localStorage.getItem(OWNER_KEY); } catch (e) { }
+      let sameOwner = !owner || owner === user.uid;
+      if (owner && owner !== user.uid) {
+        try { localStorage.setItem(CACHE_PREFIX + owner, JSON.stringify({ st, seen: SEEN })); } catch (e) { }
+        let cached = null; try { cached = JSON.parse(localStorage.getItem(CACHE_PREFIX + user.uid) || 'null'); } catch (e) { }
+        st = cached && cached.st ? Object.assign(freshState(), cached.st) : freshState();
+        SEEN = cached && cached.seen ? cached.seen : {};
+        sameOwner = !!(cached && cached.st);
+        try { localStorage.setItem(KEY, JSON.stringify(st)); localStorage.setItem(SEENK, JSON.stringify(SEEN)); } catch (e) { }
       }
-      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') { if (PROG.timer) { clearTimeout(PROG.timer); progFlush(); } } else progPull(false); });
-    } catch (e) { }
+      const snap = await PROG.doc.get();
+      if (generation !== PROG.generation) return;
+      let needsUpload = false;
+      if (snap.exists && snap.data().st) {
+        const remote = snap.data(); progApply(remote, sameOwner); PROG.lastTs = remote.ts || 0;
+        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route();
+        needsUpload = sameOwner && (st._ts || 0) > PROG.lastTs;
+      } else {
+        if (!sameOwner) {
+          st = freshState(); SEEN = {};
+          try { localStorage.setItem(KEY, JSON.stringify(st)); localStorage.setItem(SEENK, '{}'); } catch (e) { }
+        }
+        PROG.lastTs = 0; PROG.state = 'cloud'; progPush();
+      }
+      try { localStorage.setItem(OWNER_KEY, user.uid); } catch (e) { }
+      PROG.unsubscribe = PROG.doc.onSnapshot(s => {
+        if (generation !== PROG.generation || !s.exists) return;
+        const remote = s.data();
+        if (!remote.st || (remote.ts || 0) <= PROG.lastTs) return;
+        const localTs = st._ts || 0; progApply(remote, true); PROG.lastTs = remote.ts || 0; PROG.error = ''; PROG.state = 'cloud'; progChip();
+        if (localTs > PROG.lastTs) progPush();
+        if (GATE.open && !/quiz|pruefung|karten|zuordnen|spiel/.test(location.hash)) route();
+      }, e => { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); });
+      PROG.state = 'cloud'; progChip();
+      if (needsUpload) progPush();
+    } catch (e) {
+      if (generation !== PROG.generation) return;
+      PROG.error = firebaseError(e); PROG.state = 'error'; progChip();
+    }
+  }
+  function firebaseError(e) {
+    const messages = {
+      'auth/email-already-in-use': 'Für diese E-Mail-Adresse gibt es bereits ein Konto.',
+      'auth/invalid-email': 'Bitte eine gültige E-Mail-Adresse eingeben.',
+      'auth/invalid-credential': 'E-Mail-Adresse oder Passwort ist nicht korrekt.',
+      'auth/invalid-login-credentials': 'E-Mail-Adresse oder Passwort ist nicht korrekt.',
+      'auth/weak-password': 'Das Passwort muss mindestens 6 Zeichen lang sein.',
+      'auth/too-many-requests': 'Zu viele Versuche. Bitte später erneut probieren.',
+      'auth/network-request-failed': 'Keine Verbindung zu Firebase. Bitte Internetverbindung prüfen.',
+      'permission-denied': 'Firestore-Zugriff verweigert. Bitte die Sicherheitsregeln prüfen.',
+      'unavailable': 'Firebase ist gerade nicht erreichbar. Der Lernstand bleibt lokal gespeichert.'
+    };
+    return messages[e && e.code] || (e && e.message) || 'Unbekannter Firebase-Fehler.';
+  }
+  function accountDialog() {
+    if (document.getElementById('nickDlg')) return;
+    const d = document.createElement('div'); d.id = 'nickDlg'; d.setAttribute('role', 'dialog'); d.setAttribute('aria-label', 'Konto und Synchronisierung');
+    if (PROG.user) {
+      d.innerHTML = `<div class="gcard"><h2 class="h2" style="font-size:20px;margin:0">Konto</h2><p class="small" style="margin:0">${E(PROG.user.email)}</p><p class="small" style="margin:0">${PROG.state === 'error' ? E(PROG.error) : 'Dein Lernfortschritt wird mit diesem Konto synchronisiert.'}</p><button class="btn" id="accountOut" type="button">Abmelden</button><button class="btn lt" id="accountClose" type="button">Schließen</button></div>`;
+      d.querySelector('#accountOut').addEventListener('click', async () => {
+        try { await PROG.auth.signOut(); d.remove(); } catch (e) { d.querySelector('.small').textContent = firebaseError(e); }
+      });
+      d.querySelector('#accountClose').addEventListener('click', () => d.remove());
+    } else {
+      const config = window.LP_FIREBASE_CONFIG;
+      const hasConfig = config && ['apiKey', 'authDomain', 'projectId', 'appId'].every(k => typeof config[k] === 'string' && config[k].trim());
+      const configured = !!PROG.auth;
+      d.innerHTML = `<div class="gcard"><h2 class="h2" style="font-size:20px;margin:0">Lernstand synchronisieren</h2>${configured
+        ? '<p class="small" style="margin:0">Melde dich an oder erstelle ein Konto. Dein lokaler Lernstand wird beim ersten Login mit dem Cloud-Stand zusammengeführt.</p><label class="small" for="accountEmail">E-Mail</label><input id="accountEmail" type="email" autocomplete="email"><label class="small" for="accountPassword">Passwort</label><input id="accountPassword" type="password" autocomplete="current-password"><p class="gmsg" role="alert"></p><button class="btn" id="accountIn" type="button">Anmelden</button><button class="btn lt" id="accountCreate" type="button">Konto erstellen</button><button class="btn lt" id="accountReset" type="button">Passwort zurücksetzen</button>'
+        : hasConfig ? '<p class="small" style="margin:0">Das Firebase SDK konnte nicht geladen werden. Prüfe deine Internetverbindung und lade die Seite erneut.</p>'
+          : '<p class="small" style="margin:0">Firebase ist noch nicht konfiguriert. Trage die Web-App-Werte in <code>js/firebase-config.js</code> ein und aktiviere E-Mail/Passwort sowie Firestore in der Firebase Console.</p>'}
+        <button class="btn lt" id="accountClose" type="button">Schließen</button></div>`;
+      d.querySelector('#accountClose').addEventListener('click', () => d.remove());
+      if (configured) {
+        const error = m => { d.querySelector('.gmsg').textContent = m; };
+        const email = () => d.querySelector('#accountEmail').value.trim();
+        const password = () => d.querySelector('#accountPassword').value;
+        d.querySelector('#accountIn').addEventListener('click', async () => {
+          try { await PROG.auth.signInWithEmailAndPassword(email(), password()); d.remove(); }
+          catch (e) { error(firebaseError(e)); }
+        });
+        d.querySelector('#accountCreate').addEventListener('click', async () => {
+          try { await PROG.auth.createUserWithEmailAndPassword(email(), password()); d.remove(); }
+          catch (e) { error(firebaseError(e)); }
+        });
+        d.querySelector('#accountReset').addEventListener('click', async () => {
+          if (!email()) { error('Bitte zuerst deine E-Mail-Adresse eingeben.'); return; }
+          try { await PROG.auth.sendPasswordResetEmail(email()); error('Wenn ein Konto existiert, wurde eine E-Mail zum Zurücksetzen gesendet.'); }
+          catch (e) { error(firebaseError(e)); }
+        });
+        setTimeout(() => d.querySelector('#accountEmail').focus(), 40);
+      }
+    }
+    document.body.appendChild(d);
+  }
+  function progInit() {
+    try {
+      const config = window.LP_FIREBASE_CONFIG;
+      const valid = config && ['apiKey', 'authDomain', 'projectId', 'appId'].every(k => typeof config[k] === 'string' && config[k].trim());
+      if (!valid || !window.firebase || !firebase.auth || !firebase.firestore) { progChip(); return; }
+      if (!firebase.apps.length) firebase.initializeApp(config);
+      PROG.auth = firebase.auth(); PROG.db = firebase.firestore();
+      PROG.auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).then(() => {
+        PROG.auth.onAuthStateChanged(user => {
+          PROG.generation++;
+          if (PROG.unsubscribe) { PROG.unsubscribe(); PROG.unsubscribe = null; }
+          clearTimeout(PROG.timer); PROG.busy = false; PROG.again = false; PROG.lastTs = 0;
+          if (!user) { PROG.user = null; PROG.doc = null; PROG.state = 'off'; PROG.error = ''; progChip(); return; }
+          progSignIn(user, PROG.generation);
+        }, e => { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); });
+      }).catch(e => { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); });
+    } catch (e) { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); }
   }
   progInit();
 })();
