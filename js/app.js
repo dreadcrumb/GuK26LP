@@ -1580,8 +1580,6 @@ Antworte NUR mit JSON in genau dieser Form:
       if (GATE.owner && db) gateOwnerBtn(); gateCheck();
     } catch (e) { }
   }
-  gateInit();
-
   /* ---------- Firebase-Lernstandssynchronisierung ---------- */
   const PROG = { auth: null, db: null, user: null, doc: null, state: 'off', timer: null, busy: false, again: false, lastTs: 0, generation: 0, unsubscribe: null, error: '' };
   const OWNER_KEY = 'lp-sync-uid';
@@ -1749,6 +1747,7 @@ Antworte NUR mit JSON in genau dieser Form:
     } catch (e) { PROG.error = firebaseError(e); PROG.state = 'error'; progChip(); }
   }
   progInit();
+  gateInit();
 })();
 
 window.addEventListener('message', e => { if (e.data === 'aad-back' && location.hash === '#spiel') { if (document.fullscreenElement) document.exitFullscreen().catch(() => { }); location.hash = '#start'; } });
